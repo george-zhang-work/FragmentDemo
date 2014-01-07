@@ -9,6 +9,7 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
 import android.util.AttributeSet;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ListView;
@@ -25,10 +26,28 @@ public class HoverCellListView extends ListView {
      */
     private int mDownY = INVALID_POSITION;
 
+    private View mMobileView;
+
     private BitmapDrawable mHoverCell;
     private boolean mCellIsMobile;
     private Rect mHoverCellCurrentBounds;
     private Rect mHoverCellOriginalBounds;
+    private int mActivePointerId = INVALID_POSITION;
+
+    private int mTotalOffset;
+
+    /**
+     * Swap the visual position of two list items.
+     */
+    public interface Swappable {
+        /**
+         * Callback method to be invoked when swaps first item with the second.
+         * 
+         * @param firstItem Index the first item's position in the adapter.
+         * @param secondItem Index the second item's position in the adapter.
+         */
+        public void swapItems(int firstItem, int secondItem);
+    }
 
     public HoverCellListView(Context context) {
         super(context);
@@ -70,8 +89,10 @@ public class HoverCellListView extends ListView {
         @Override
         public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
             mHoverCell = getHoverCellViewDrawable(view);
+
             view.setVisibility(INVISIBLE);
             mCellIsMobile = true;
+            mMobileView = view;
 
             return onListItemLongClick((ListView) parent, view, position, id);
         }
@@ -79,6 +100,67 @@ public class HoverCellListView extends ListView {
 
     protected boolean onListItemLongClick(ListView l, View view, int position, long id) {
         return true;
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent ev) {
+
+        final int actionMasked = ev.getActionMasked();
+        switch (actionMasked) {
+            case MotionEvent.ACTION_DOWN:
+                onTouchDown(ev);
+                break;
+            case MotionEvent.ACTION_MOVE:
+                onTouchMove(ev);
+            default:
+                break;
+        }
+        return super.onTouchEvent(ev);
+    }
+
+    protected void onTouchDown(MotionEvent ev) {
+        mActivePointerId = ev.getPointerId(0);
+    }
+
+    protected void onTouchMove(MotionEvent ev) {
+        int pointerIndex = ev.findPointerIndex(mActivePointerId);
+        if (pointerIndex == INVALID_POSITION) {
+            pointerIndex = 0;
+            mActivePointerId = ev.getPointerId(pointerIndex);
+        }
+
+        final int y = (int) ev.getY(pointerIndex);
+
+        if (mCellIsMobile) {
+            final int deltaY = y - mDownY;
+            mHoverCellCurrentBounds.offset(0, deltaY);
+
+            invalidate();
+
+            handleCellSwap();
+        }
+    }
+
+    /**
+     * This method determines whether the hover cell has been shifted far enough
+     * to invoke a cell swap. If so, then the respective cell swap candidate is
+     * determined and the data set is changed. Upon posting a notification of
+     * the data set change, a layout is invoked to place the cells in the right
+     * place. Using a ViewTreeObserver and a corresponding OnPreDrawListener, we
+     * can offset the cell being swapped to where it previously was and then
+     * animate it to its new position.
+     */
+    private void handleCellSwap() {
+
+        getPositionForView(null);
+    }
+
+    private View getViewForPosition(int x, int y) {
+        final int pos = pointToPosition(x, y);
+        if (pos != INVALID_POSITION) {
+            return getChildAt(pos);
+        }
+        return null;
     }
 
     /**

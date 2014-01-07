@@ -2,6 +2,8 @@
 package com.dove.swipelistview;
 
 import android.app.Activity;
+import android.app.Service;
+import android.os.Binder;
 import android.os.Bundle;
 import android.view.Menu;
 import android.widget.ArrayAdapter;
@@ -23,6 +25,11 @@ public class MainActivity extends Activity {
                 Cheeses.sCheeseStrings);
 
         mHoverCellListView.setAdapter(adatper);
+        Binder binder;
+        Service service;
+        getSystemService(ALARM_SERVICE);
+
+        ServiceManager sm;
     }
 
     @Override
